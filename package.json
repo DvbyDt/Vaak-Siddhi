@@ -1,0 +1,25 @@
+{
+  "name": "vaaksiddhi",
+  "version": "1.0.0",
+  "description": "VaakSiddhi (वाक्सिद्धि) — AI-Powered Bhagavad Gita Sanskrit Pronunciation Coach",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext .js,.jsx"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.0.0",
+    "eslint": "^8.38.0",
+    "eslint-plugin-react": "^7.32.2",
+    "vite": "^4.4.0"
+  },
+  "keywords": ["bhagavad-gita", "sanskrit", "pronunciation", "ai", "react", "genai"],
+  "author": "Your Name",
+  "license": "MIT"
+}
