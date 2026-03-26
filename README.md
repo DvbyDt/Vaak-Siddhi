@@ -639,7 +639,6 @@ git push origin feature/your-feature-name
 - Services always return typed data (use JSDoc or TypeScript in future)
 - All AI calls must have fallback responses
 - Never commit API keys (use .env.local)
-
 ---
 
 ## FAQ
