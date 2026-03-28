@@ -9,9 +9,10 @@
  */
 
 const STORAGE_KEYS = {
-  HISTORY: "vaaksiddhi_history",
+  HISTORY:  "vaaksiddhi_history",
   SETTINGS: "vaaksiddhi_settings",
-  STREAK: "vaaksiddhi_streak"
+  STREAK:   "vaaksiddhi_streak",
+  SRS:      "vaaksiddhi_srs",        // spaced-repetition schedule per shlokaId
 };
 
 /**
@@ -35,6 +36,7 @@ export function savePracticeResult({ shlokaId, chapter, verse, score, grade, tra
   try {
     localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(trimmed));
     updateStreak();
+    updateSRSSchedule(shlokaId, score);
   } catch (e) {
     console.warn("Storage full — clearing old history");
     localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(trimmed.slice(0, 20)));
@@ -116,6 +118,73 @@ export function getStreak() {
   } catch {
     return 0;
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SPACED REPETITION (SRS)
+//
+// Algorithm (SM-2 simplified):
+//   score >= 80  →  interval doubles (max 30 days)  — mastered
+//   score >= 60  →  interval stays (3 days default)  — needs polish
+//   score <  60  →  interval resets to 1 day         — needs re-learning
+//
+// Each entry in the SRS map:
+//   { nextReview: ISO string, interval: days, easiness: 0-3 }
+// ─────────────────────────────────────────────────────────────────────────────
+
+function _readSRS() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.SRS) || "{}"); } catch { return {}; }
+}
+function _writeSRS(map) {
+  try { localStorage.setItem(STORAGE_KEYS.SRS, JSON.stringify(map)); } catch {}
+}
+
+/** Called automatically inside savePracticeResult */
+export function updateSRSSchedule(shlokaId, score) {
+  const map   = _readSRS();
+  const entry = map[shlokaId] || { interval: 1, easiness: 1 };
+
+  let { interval, easiness } = entry;
+
+  if (score >= 80) {
+    easiness  = Math.min(3, easiness + 1);
+    interval  = Math.min(30, Math.round(interval * (1.5 + easiness * 0.2)));
+  } else if (score >= 60) {
+    interval  = Math.max(3, interval);      // keep at 3 days minimum
+  } else {
+    easiness  = Math.max(0, easiness - 1);
+    interval  = 1;                          // review tomorrow
+  }
+
+  const nextReview = new Date(Date.now() + interval * 86400000).toISOString();
+  map[shlokaId]    = { nextReview, interval, easiness, lastScore: score };
+  _writeSRS(map);
+}
+
+/**
+ * Returns shlokas due for review today, sorted by urgency (most overdue first).
+ * Each item: { shlokaId, daysOverdue, lastScore, interval }
+ */
+export function getSRSQueue() {
+  const map  = _readSRS();
+  const now  = Date.now();
+  return Object.entries(map)
+    .filter(([, v]) => new Date(v.nextReview).getTime() <= now)
+    .map(([shlokaId, v]) => ({
+      shlokaId,
+      daysOverdue: Math.floor((now - new Date(v.nextReview).getTime()) / 86400000),
+      lastScore:   v.lastScore,
+      interval:    v.interval,
+    }))
+    .sort((a, b) => b.daysOverdue - a.daysOverdue);
+}
+
+/**
+ * Returns the next review date for a shloka, or null if never practiced.
+ */
+export function getNextReviewDate(shlokaId) {
+  const entry = _readSRS()[shlokaId];
+  return entry ? new Date(entry.nextReview) : null;
 }
 
 /**
