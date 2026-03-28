@@ -1,88 +1,134 @@
 /**
- * VaakSiddhi — LLM Service Abstraction Layer
+ * llm.js — VaakSiddhi AI Service
+ * Calls backend: Groq (primary) → Gemini (backup) → Heuristic (fallback)
  *
- * This module abstracts all LLM calls so that the provider
- * can be swapped in a single line (Groq → Claude → GPT-4o).
- *
- * All calls are routed through the FastAPI backend which holds
- * the API keys securely and handles rate limiting.
- *
- * Backend URL is configured via VITE_API_URL env var.
- * Defaults to http://localhost:8000 for local development.
+ * Accepts the same call signature as App.jsx uses:
+ *   analyzePronunciation({ expectedTranslit, spokenText, shlokaEnglish, shlokaHardSounds })
  */
 
-const API_BASE = import.meta.env.VITE_API_URL || "";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
+
+function makeRequestId() {
+  return `vs-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
 
 /**
- * Main pronunciation analysis function.
- * Sends expected transliteration + spoken transcript to the backend,
- * which proxies to Claude and returns structured JSON feedback.
+ * analyzePronunciation
+ * Called from App.jsx as:
+ *   analyzePronunciation({ expectedTranslit, spokenText, shlokaEnglish, shlokaHardSounds })
  */
-export async function analyzePronunciation({ expectedTranslit, spokenText, shlokaEnglish, shlokaHardSounds }) {
-  const response = await fetch(`${API_BASE}/api/analyze`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      expected_transliteration: expectedTranslit,
-      spoken_transcript: spokenText || "",
-      shloka_english: shlokaEnglish || "",
-      hard_sounds: shlokaHardSounds || []
-    })
-  });
-
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    console.error(`Backend error ${response.status}:`, detail);
-    return getFallbackAnalysis(spokenText);
-  }
-
+export async function analyzePronunciation({ expectedTranslit, spokenText, spokenAlternatives = [], shlokaEnglish, shlokaHardSounds = [] }) {
   try {
-    return await response.json();
-  } catch {
-    return getFallbackAnalysis(spokenText);
+    const resp = await fetch(`${BACKEND_URL}/api/analyze`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Request-ID": makeRequestId() },
+      body: JSON.stringify({
+        expected_transliteration: expectedTranslit,
+        spoken_transcript:        spokenText || "",
+        spoken_alternatives:      spokenAlternatives.slice(0, 5), // cap at 5
+        shloka_english:           shlokaEnglish,
+        hard_sounds:              shlokaHardSounds || [],
+      }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      if (resp.status === 429) {
+        throw new Error("Too many requests — please wait a moment and try again.");
+      }
+      console.error("[llm] Backend error:", resp.status, err);
+      throw new Error(err.detail || `Server error ${resp.status}`);
+    }
+
+    return await resp.json();
+
+  } catch (fetchErr) {
+    if (fetchErr.name === "TypeError") {
+      console.warn("[llm] Backend unreachable — using local fallback");
+      return localFallback(spokenText);
+    }
+    throw fetchErr;
   }
 }
 
 /**
- * Generate a daily Sanskrit word of the day for the home screen.
- * Routed through the backend to keep API keys secure.
+ * analyzePronunciationWithAudio
+ * Sends the raw WebM audio blob to the backend, which forwards it to Gemini's
+ * audio understanding API. Gemini hears the actual voice — no STT middleman.
+ * Falls back to text-based analysis if the audio endpoint is unreachable.
  */
+export async function analyzePronunciationWithAudio({ blob, expectedTranslit, spokenText, shlokaEnglish, shlokaHardSounds = [] }) {
+  const rid = makeRequestId();
+  try {
+    const formData = new FormData();
+    formData.append("audio", blob, "recording.webm");
+    formData.append("expected_transliteration", expectedTranslit);
+    formData.append("shloka_english", shlokaEnglish);
+    formData.append("hard_sounds", JSON.stringify(shlokaHardSounds || []));
+    formData.append("spoken_transcript", spokenText || "");
+
+    // No Content-Type header — let browser set it with the multipart boundary
+    const resp = await fetch(`${BACKEND_URL}/api/analyze-audio`, {
+      method: "POST",
+      headers: { "X-Request-ID": rid },
+      body: formData,
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      if (resp.status === 429) throw new Error("Too many requests — please wait a moment and try again.");
+      throw new Error(err.detail || `Server error ${resp.status}`);
+    }
+
+    return await resp.json();
+
+  } catch (fetchErr) {
+    if (fetchErr.name === "TypeError") {
+      // Backend unreachable — fall back to text-based analysis
+      console.warn("[llm] Audio backend unreachable — falling back to text analysis");
+      return analyzePronunciation({ expectedTranslit, spokenText, shlokaEnglish, shlokaHardSounds });
+    }
+    throw fetchErr;
+  }
+}
+
 export async function getDailyWord() {
   try {
-    const response = await fetch(`${API_BASE}/api/daily-word`);
-    if (!response.ok) throw new Error(`Status ${response.status}`);
-    return await response.json();
-  } catch {
-    return { word: "कर्म", transliteration: "karma", meaning: "Action, duty", usage: "Chapter 2, Verse 47" };
-  }
+    const resp = await fetch(`${BACKEND_URL}/api/daily-word`);
+    if (resp.ok) return await resp.json();
+  } catch {}
+
+  const words = [
+    { word: "कर्म",    transliteration: "karma",  meaning: "Action, duty",      usage: "BG 2.47" },
+    { word: "धर्म",    transliteration: "dharma", meaning: "Righteousness",     usage: "BG 1.1"  },
+    { word: "योग",     transliteration: "yoga",   meaning: "Union, discipline", usage: "BG 2.48" },
+    { word: "ज्ञान",  transliteration: "jñāna",  meaning: "Knowledge, wisdom", usage: "BG 4.38" },
+    { word: "भक्ति",  transliteration: "bhakti", meaning: "Devotion, love",    usage: "BG 12.1" },
+    { word: "आत्मा",  transliteration: "ātmā",   meaning: "Soul, true self",   usage: "BG 2.20" },
+    { word: "शान्ति", transliteration: "śānti",  meaning: "Peace",             usage: "BG 2.66" },
+  ];
+  return words[Math.floor(Date.now() / 86400000) % words.length];
 }
 
-/**
- * Offline/error fallback — always returns a useful response
- */
-function getFallbackAnalysis(spokenText) {
-  const hasText = spokenText && spokenText.trim().length > 5;
+function localFallback(spoken) {
+  const hasText = spoken && spoken.trim().length > 3;
   return {
-    score: hasText ? 65 : 40,
-    grade: hasText ? "C+" : "D",
+    score:   hasText ? 45 : 30,
+    grade:   hasText ? "C" : "D",
     overall: hasText
-      ? "Good effort! AI analysis unavailable — check your connection for detailed feedback."
-      : "Recording was unclear. Please try again in a quiet space.",
-    praise: "You showed dedication by attempting the recitation. That is the first step!",
-    mistakes: hasText
-      ? ["Could not connect to AI analysis engine for specific feedback"]
-      : ["No speech detected — ensure microphone permissions are granted"],
+      ? "Backend offline. Run: cd backend && uvicorn main:app --reload"
+      : "No speech detected. Check your microphone permissions.",
+    praise: "Your dedication to learning Sanskrit is commendable!",
+    mistakes: ["Backend not running — start it for full AI analysis"],
     tips: [
-      "Focus on long vowels: ā (like 'father'), ī (like 'feel'), ū (like 'pool')",
-      "Sanskrit retroflex sounds (ṭ, ḍ, ṇ) require tongue curled back to palate",
-      "Pause briefly between each line (pāda) of the verse"
+      "Long vowels (ā, ī, ū) must be held twice as long as short ones",
+      "Retroflex sounds (ṭ, ḍ, ṇ) need your tongue curled back to the palate",
+      "Pause at each line break — Sanskrit breathes in phrases called pādas",
     ],
     phonetic_guide: {
-      word: "karma",
-      breakdown: "kar-muh — 'a' as in 'sun', not 'kar-maa'",
-      example: "Similar to 'car' + 'muh'"
+      word: "karma", breakdown: "kar · muh — both 'a's are short", example: "Like 'car' + 'ma'",
     },
-    sanskrit_rule: "In Sanskrit, vowel length is phonemic — shortening a long vowel changes the word's meaning entirely.",
-    encouragement: "अभ्यासेन तु कौन्तेय — Through practice, O Arjuna, all is achieved. (Gita 6.35)"
+    sanskrit_rule: "Sanskrit is perfectly phonetic — every written letter is always pronounced exactly as written.",
+    encouragement: "अभ्यासेन तु कौन्तेय — Through practice, all is achieved. (BG 6.35)",
   };
 }

@@ -1,8 +1,8 @@
 # 🕉 VaakSiddhi — वाक्सिद्धि
 ### *Mastery of Voice*
 
-> **AI-powered Bhagavad Gita Sanskrit pronunciation coach.**  
-> Record your recitation → get word-level AI feedback → perfect your Sanskrit.
+> **AI-powered Bhagavad Gita Sanskrit pronunciation coach.**
+> Record your recitation → get word-level AI feedback → hear the correct pronunciation → perfect your Sanskrit.
 
 ---
 
@@ -28,16 +28,15 @@ It echoes naturally across Hindi, Sanskrit, and English speakers. In Hindu philo
 4. [Tech Stack & Costs](#tech-stack--costs)
 5. [Project Structure](#project-structure)
 6. [Getting Started](#getting-started)
-7. [How to Run Locally](#how-to-run-locally)
-8. [Deploy for Free](#deploy-for-free)
-9. [Scaling Guide](#scaling-guide)
-10. [API Reference](#api-reference)
-11. [The AI Feedback Engine](#the-ai-feedback-engine)
+7. [Deploy for Free](#deploy-for-free)
+8. [Scaling Guide](#scaling-guide)
+9. [API Reference](#api-reference)
+10. [The AI Feedback Engine](#the-ai-feedback-engine)
+11. [Pronunciation Audio — Upgrade Path](#pronunciation-audio--upgrade-path)
 12. [Shloka Database](#shloka-database)
-13. [Roadmap](#roadmap)
-14. [Research & Feasibility](#research--feasibility)
-15. [Contributing](#contributing)
-16. [FAQ](#faq)
+13. [Bugs Fixed](#bugs-fixed)
+14. [Roadmap](#roadmap)
+15. [FAQ](#faq)
 
 ---
 
@@ -46,25 +45,29 @@ It echoes naturally across Hindi, Sanskrit, and English speakers. In Hindu philo
 VaakSiddhi is a mobile-first web app that turns your phone into a personal Sanskrit pronunciation guru.
 
 ```
-You recite a shloka  →  AI listens  →  AI tells you exactly what went wrong  →  You improve
+You recite a shloka  →  AI listens  →  Hear your own voice back
+→  AI tells you exactly what went wrong  →  Hear correct Devanagari TTS  →  You improve
 ```
 
 ### Features
 
 | Feature | Description |
 |---|---|
-| 🎙 **Voice Recording** | Record yourself with the browser microphone (no app install needed) |
-| 🧠 **AI Phonetic Analysis** | Claude AI compares your speech against the correct transliteration |
+| 🎙 **Voice Recording** | Record yourself; hear your own voice back with a progress player |
+| 🧠 **AI Phonetic Analysis** | Multi-provider cascade: Groq → Gemini → Heuristic fallback |
 | 📊 **Score + Grade** | 0–100 score with letter grade (A+ to F) after each attempt |
-| 📝 **Word-Level Feedback** | Exact words/sounds you mispronounced and why |
-| 💡 **Actionable Tips** | 3 specific tips to improve, e.g. "The ā in kāma is long like 'father'" |
-| 🔤 **Phonetic Breakdown** | Syllable-by-syllable guide for the hardest word you got wrong |
-| 📚 **Sanskrit Rules** | One phonetics rule explained per session — you learn the system |
+| 📝 **Word-Level Feedback** | Exact words mispronounced with Devanagari badge + IAST reference |
+| 🔊 **Authentic TTS** | Hear correct pronunciation in actual Devanagari script (hi-IN voice) |
+| 💡 **Actionable Tips** | 3 specific improvement tips per session |
+| 🔤 **Phonetic Breakdown** | Syllable-by-syllable guide for the hardest mispronounced word |
+| 📚 **Sanskrit Rules** | One phonetics rule explained per session |
 | 🇮🇳 **Hindi Meanings** | Full Devanagari Hindi translation of every shloka |
 | 🌐 **English Meanings** | English translation for all verses |
-| 🗺 **Pronunciation Guide** | Audio hints + hard sound reference for every shloka |
 | 📈 **Progress Tracking** | Session history, best scores, streaks, stats dashboard |
-| ✨ **Daily Sanskrit Word** | A beautiful Sanskrit word from the Gita every day |
+| 🧠 **Spaced Repetition** | SM-2 algorithm schedules shlokas for optimal review timing |
+| ✨ **Daily Sanskrit Word** | A rotating Sanskrit word from the Gita every day |
+| 📱 **PWA / Offline** | Installs on homescreen; shloka library works offline |
+| 🔄 **Scroll Memory** | Library scroll position and filters persist across navigation |
 
 ---
 
@@ -72,19 +75,19 @@ You recite a shloka  →  AI listens  →  AI tells you exactly what went wrong 
 
 Sanskrit has ~50 phonemes vs English's ~44. Many Sanskrit sounds simply don't exist in English or Hindi:
 
-| Sound | Example | English equivalent |
+| Sound | Example | Correct articulation |
 |---|---|---|
-| **ā** (long a) | kāma, dhāraṇā | Like "father" — NOT "cat" |
-| **ṭ, ḍ, ṇ** (retroflex) | kaṭhina, ḍamaru | Tongue curled back to palate |
-| **ṣ** (retroflex sibilant) | kṛṣṇa, viṣṇu | Harder than English "sh" |
-| **ḥ** (visarga) | duḥkha, namaḥ | Soft echo/breath after vowel |
-| **ṃ/ṁ** (anusvara) | saṃskāra | Nasal hum, not a full "n" |
+| **ā** (long a) | kāma, dhāraṇā | Like "father" — held **twice** as long as short 'a' |
+| **ṭ, ḍ, ṇ** (retroflex) | kaṭhina, ḍamaru | Tongue **curled back** to the palate |
+| **ṣ** (retroflex sibilant) | kṛṣṇa, viṣṇu | Harder than English "sh" — tongue further back |
+| **ḥ** (visarga) | duḥkha, namaḥ | Soft echo-breath after the vowel |
+| **ṃ/ṁ** (anusvara) | saṃskāra | Nasal hum — not a full "n" |
 
 Getting these wrong doesn't just sound odd — in Sanskrit, **vowel length and consonant type are phonemic**. Short vs long vowel = different word entirely.
 
 **Existing apps don't solve this:**
 - Vyoma/SanskritFromHome → Listen only, no feedback on *your* voice
-- SGS Gita Tutor → Excellent audio library, zero recording feature  
+- SGS Gita Tutor → Excellent audio library, zero recording feature
 - Bhagavad Gita apps → Reference only, no pronunciation coaching
 
 **VaakSiddhi closes the feedback loop** that's been missing from every Sanskrit learning tool.
@@ -93,105 +96,89 @@ Getting these wrong doesn't just sound odd — in Sanskrit, **vowel length and c
 
 ## Architecture
 
-See `docs/architecture.svg` for the full visual diagram.
+See [`docs/architecture.svg`](docs/architecture.svg) for the full visual diagram.
 
 ### System Design Overview
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                    USER  (Browser / Mobile)                      │
-│          Records voice · Views shlokas · Gets AI feedback        │
-│                   [ Web Speech API — FREE ]                      │
-└──────────────────────────┬───────────────────────────────────────┘
-                           │
-                           ▼
-┌──────────────────────────────────────────────────────────────────┐
-│              React Frontend  (Vercel / Netlify)                  │
-│       HomeScreen · LibraryScreen · PracticeScreen · Results      │
-│              [ Stage 1: Free  →  Stage 3: $20/mo ]               │
-└──────────────────────────┬───────────────────────────────────────┘
-                           │
-                           ▼
-┌──────────────────────────────────────────────────────────────────┐
-│            FastAPI Backend  (Railway / Render)                   │
-│        API proxy · Auth · Rate limiting · Key protection         │
-│         [ Stage 1: Free tier  →  Stage 3: $7–25/mo ]            │
-└────────┬──────────────────────────────────────┬──────────────────┘
-         │                                      │
-         ▼                                      ▼
-┌─────────────────────┐              ┌────────────────────────┐
-│   SPEECH-TO-TEXT    │              │   LLM FEEDBACK ENGINE  │
-│                     │              │                        │
-│ Stage 1:            │              │ Stage 1:               │
-│  Web Speech API     │              │  Claude (browser)      │
-│  (free, built-in)   │              │  (free)                │
-│                     │              │                        │
-│ Stage 2:            │              │ Stage 2:               │
-│  Whisper API        │              │  Groq/Llama 3.3        │
-│  ($0.006/min)       │              │  (14,400 req/day free) │
-│                     │              │                        │
-│ Stage 3:            │              │ Stage 3:               │
-│  Self-hosted GPU    │              │  Claude Sonnet         │
-│  (RunPod/Modal)     │              │  / GPT-4o              │
-└─────────────────────┘              └────────────────────────┘
-                           │
-                           ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                  Supabase  (PostgreSQL)                          │
-│          User progress · Session history · Streaks · Stats       │
-│           [ Stage 1: Free (50K users) → Stage 3: $25/mo ]       │
-└──────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                    USER  (Browser / Mobile — Chrome/Edge)                    │
+└──────────────────────────────────┬───────────────────────────────────────────┘
+                                   │
+          ┌────────────────────────┼──────────────────────────┐
+          ▼                        ▼                          ▼
+  🎤 Web Speech API         🎙 MediaRecorder          🔊 Speech Synthesis
+  (hi-IN, 3 alternatives,   (WebM/Opus, blob URL,     (Devanagari TTS,
+   continuous, gotAnyAudio   progress player,          hi-IN, rate 0.45–0.6,
+   guard, manual fallback)   replay fixed)             authentic Sanskrit)
+          │                        │                          │
+          └────────────────────────┼──────────────────────────┘
+                                   │
+               ⚡ Service Worker (PWA, cache-first, offline-safe)
+                                   │
+┌──────────────────────────────────▼───────────────────────────────────────────┐
+│                    React 18 + Vite Frontend                                  │
+│  ErrorBoundary → HomeScreen · LibraryScreen · PracticeScreen · ResultsScreen │
+│  Shared UI: ScoreRing · WaveformBars · Chip · Card · DifficultyBadge         │
+│  Lazy-loaded shlokas.json · sessionStorage scroll + filter memory            │
+└──────────────────────────────────┬───────────────────────────────────────────┘
+                                   │ POST /api/analyze + X-Request-ID header
+┌──────────────────────────────────▼───────────────────────────────────────────┐
+│                 FastAPI Backend  (Railway / Render)                           │
+│  Rate limiter (20 RPM/IP) · Response cache (MD5, 10 min TTL)                 │
+│  Pydantic v2 validation · CORS hardened · Structured logging + request IDs   │
+└──────┬──────────────────────┬────────────────────────────────┬───────────────┘
+       │                      │                                │
+       ▼                      ▼                                ▼
+ ① GROQ (Primary)     ② GEMINI (Backup)          ③ HEURISTIC (Fallback)
+ llama-3.3-70b        gemini-2.5-flash            Rule-based word match
+ 14,400 req/day       15 RPM free                 Always works, no API needed
+ JSON mode            responseMimeType:json        Provider health tracker
 
-                    STATIC ASSETS (NO DB NEEDED)
-┌──────────────────────────────────────────────────────────────────┐
-│                  shlokas.json  (~500KB)                          │
-│     700 verses · Sanskrit · Hindi · English · Transliteration    │
-│           Loaded once · Cached by CDN · Works offline            │
-└──────────────────────────────────────────────────────────────────┘
+               ↓ Response includes: Devanagari form per mistake word
+
+┌─────────────────────────────┐      ┌────────────────────────────────────────┐
+│   shlokas.json (Static)     │      │   Progress Store                       │
+│   700 verses · Sanskrit     │      │   Stage 1: localStorage                │
+│   Hindi · IAST · English    │      │   Stage 2: Supabase PostgreSQL         │
+│   Lazy-loaded · CDN-cached  │      │   SRS schedule · Streak · History      │
+└─────────────────────────────┘      └────────────────────────────────────────┘
 ```
 
 ### Key Design Principles
 
-**1. Provider Abstraction Layer** (most important decision)
+**1. Provider Abstraction Layer**
 
-Never hardcode an AI provider. All STT and LLM calls go through service wrappers:
+All STT and LLM calls go through service wrappers — swap any provider in one line:
 
 ```javascript
-// src/services/llm.js
-export async function analyzePronunciation(params) {
-  return claudeAnalyze(params);    // ← change this line to swap providers
-}
+// src/services/llm.js — change backend URL to switch AI provider
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 
-// src/services/audio.js  
-export function createSpeechRecognizer(callbacks) {
-  return webSpeechRecognizer(callbacks);  // ← swap to Whisper/Deepgram
-}
+// backend/main.py — cascade tries providers in order
+providers = [("groq", call_groq), ("gemini", call_gemini)]
+# Comment out a provider or add a new one — frontend never changes
 ```
-
-If Groq changes pricing, Claude goes down, or a better model emerges — you change **one line** and nothing else breaks.
 
 **2. Static Shloka Database**
 
-All 700 shlokas = ~500KB JSON file. This means:
-- Zero database queries for content (instant loads)
-- CDN-cached globally (sub-50ms access anywhere)
-- Works fully offline as a PWA
-- Never a scaling bottleneck
+All shlokas = one JSON file. Zero DB queries for content. Lazy-loaded via `import()` so the app renders instantly without waiting for 16MB of data.
 
-**3. Server-Side API Proxying (from Stage 2)**
+**3. Graceful Degradation**
 
-Even though Stage 1 calls Claude directly from the browser (fine for demos), Stage 2 always routes through the backend. Why:
-- API keys never exposed to the client
-- Rate limiting prevents abuse
-- Centralized logging and monitoring
-- Easy provider swaps without frontend redeploys
+- No mic permission → read shlokas, view meanings
+- Offline → full shloka library (PWA cache), SRS queue still works
+- AI API down → heuristic fallback still gives general coaching
+- Network error during speech recognition → auto-switches to manual text input
 
-**4. Progressive Enhancement**
+**4. Request ID Tracing**
 
-The app degrades gracefully:
-- No mic permission → can still read shlokas + see meanings
-- No internet → offline shloka library still works (PWA)
-- AI API down → fallback response still gives general tips
+Every `/api/analyze` call gets a unique `X-Request-ID` header. The backend logs every step with `rid=` so any request can be traced end-to-end:
+
+```
+2026-03-28T14:22:01 INFO [vaaksiddhi] analyze ip=127.0.0.1 rid=vs-m3x8a-k2pq9 translit_len=142
+2026-03-28T14:22:03 INFO [vaaksiddhi] cascade provider=groq score=74 rid=vs-m3x8a-k2pq9
+```
 
 ---
 
@@ -199,28 +186,27 @@ The app degrades gracefully:
 
 ### Stage 1 — MVP (₹0/month, up to ~1,000 users)
 
-| Layer | Technology | Why | Cost |
-|---|---|---|---|
-| Frontend | React 18 + Vite | Fast, component-based | Free |
-| Hosting | Vercel | Auto CDN, free SSL, instant deploy | Free |
-| Voice Capture | Web Speech API | Built into Chrome/Edge, no install | Free |
-| STT | Web Speech API (hi-IN) | Good enough for MVP | Free |
-| AI Feedback | Claude (Anthropic) | Best Sanskrit understanding | Free* |
-| Shloka DB | Static JSON | 700 shlokas, ~500KB | Free |
-| Progress | localStorage | No backend needed | Free |
-| **TOTAL** | | | **₹0** |
+| Layer | Technology | Cost |
+|---|---|---|
+| Frontend | React 18 + Vite | Free |
+| Hosting | Vercel | Free |
+| STT | Web Speech API (hi-IN) | Free |
+| TTS | Browser Speech Synthesis + Devanagari | Free |
+| AI Feedback | Groq free tier (14,400 req/day) | Free |
+| Shloka DB | Static JSON (lazy-loaded) | Free |
+| Offline | Service Worker PWA | Free |
+| Progress | localStorage + SRS | Free |
+| **TOTAL** | | **₹0** |
 
-*Claude API key required — free to get at console.anthropic.com
-
-### Stage 2 — Growth (~$40/month, up to 100,000 users)
+### Stage 2 — Growth (~$65/month, up to 100,000 users)
 
 | Layer | Technology | Cost |
 |---|---|---|
-| Backend | FastAPI on Railway | $5/month |
-| STT | OpenAI Whisper API | ~$18/month (100K×1min sessions) |
-| AI | Groq/Llama 3.3 70B | ~$12/month |
+| Backend | FastAPI on Railway | $7/month |
+| STT | OpenAI Whisper API | ~$18/month |
+| AI | Groq paid / Gemini Pro | ~$15/month |
 | DB | Supabase Pro | $25/month |
-| **TOTAL** | | **~$60/month** |
+| **TOTAL** | | **~$65/month** |
 
 ### Stage 3 — Scale (~$260/month, up to 1M users)
 
@@ -232,8 +218,6 @@ The app degrades gracefully:
 | DB | Supabase Pro | $25/month |
 | **TOTAL** | | **~$260/month** |
 
-> **Revenue perspective:** At 1M users with ₹99/month subscription = ₹99M/month revenue on ₹21,000 infrastructure = extraordinary unit economics.
-
 ---
 
 ## Project Structure
@@ -242,28 +226,45 @@ The app degrades gracefully:
 vaaksiddhi/
 │
 ├── src/                          # React frontend
-│   ├── App.jsx                   # Root component + all screens
-│   ├── main.jsx                  # React entry point
+│   ├── App.jsx                   # Root routing (~80 lines, was 932)
+│   ├── main.jsx                  # Entry point + ErrorBoundary wrapper
+│   │
+│   ├── components/
+│   │   ├── ErrorBoundary.jsx     # Catches all React crashes, shows reload
+│   │   ├── HomeScreen.jsx        # Dashboard: stats, daily word, history
+│   │   ├── LibraryScreen.jsx     # Shloka browser: lazy JSON, scroll memory
+│   │   ├── PracticeScreen.jsx    # Recording + STT + MediaRecorder
+│   │   ├── ResultsScreen.jsx     # Analysis display + TTS + recording playback
+│   │   └── ui/
+│   │       └── index.jsx         # Shared: Chip, Card, ScoreRing, WaveformBars…
 │   │
 │   ├── data/
-│   │   └── shlokas.json          # 700 Bhagavad Gita verses (static)
+│   │   └── shlokas.json          # 700 Bhagavad Gita verses (lazy-loaded)
 │   │
-│   └── services/
-│       ├── llm.js                # LLM abstraction (Claude/Groq/GPT-4o)
-│       ├── audio.js              # STT abstraction (WebSpeech/Whisper)
-│       └── storage.js            # Progress storage (localStorage → Supabase)
+│   ├── services/
+│   │   ├── audio.js              # Web Speech API + MediaRecorder abstraction
+│   │   ├── llm.js                # Backend proxy + makeRequestId + local fallback
+│   │   └── storage.js            # localStorage + SRS (SM-2) + streak + settings
+│   │
+│   └── styles/
+│       └── tokens.js             # Design tokens (colors) + global CSS
 │
-├── backend/                      # FastAPI (Stage 2+)
-│   ├── main.py                   # API routes + rate limiting
-│   └── requirements.txt          # Python dependencies
+├── backend/                      # FastAPI
+│   ├── main.py                   # Routes · cascade · rate limit · cache · logging
+│   ├── requirements.txt          # Python deps (pydantic>=2.9, fastapi>=0.115)
+│   └── .env                      # NOT committed — copy from .env.example
+│
+├── public/
+│   ├── sw.js                     # Service Worker: cache-first, API network-only
+│   ├── manifest.json             # PWA manifest: standalone, theme #0D0818
+│   └── om.svg                    # App icon
 │
 ├── docs/
-│   └── architecture.svg          # Full system architecture diagram
+│   └── architecture.svg          # Full system architecture diagram (this file)
 │
-├── index.html                    # HTML entry point
-├── vite.config.js                # Vite configuration
-├── package.json                  # Node dependencies
-├── .env.example                  # Environment variables template
+├── index.html                    # PWA meta tags + service worker registration
+├── vite.config.js                # Vite build config
+├── .env.example                  # Template — copy to backend/.env
 └── README.md                     # This file
 ```
 
@@ -274,121 +275,85 @@ vaaksiddhi/
 ### Prerequisites
 
 - **Node.js 18+** — [nodejs.org](https://nodejs.org)
-- **A free Claude API key** — [console.anthropic.com](https://console.anthropic.com) (takes 60 seconds)
-- **Chrome or Edge** — for Web Speech API (Firefox not supported)
+- **Python 3.9+** — [python.org](https://python.org)
+- **A free Groq API key** — [console.groq.com](https://console.groq.com) (30 seconds, no credit card)
+- **Chrome or Edge** — required for Web Speech API (Safari/Firefox not supported)
 
-### How to Run Locally
+### Run Locally
 
 ```bash
-# 1. Clone the repository
+# 1. Clone
 git clone https://github.com/yourusername/vaaksiddhi
 cd vaaksiddhi
 
-# 2. Install dependencies
+# 2. Install frontend deps
 npm install
 
-# 3. Set up environment variables
-cp .env.example .env.local
-# Edit .env.local and add your Claude API key:
-# VITE_ANTHROPIC_API_KEY=sk-ant-...
-
-# 4. Start development server
+# 3. Start frontend (no backend needed for basic use)
 npm run dev
-
-# App runs at http://localhost:5173
+# → http://localhost:5173
 ```
 
-### Run the Backend (Stage 2+)
+### Run the Backend (for AI analysis)
 
 ```bash
 cd backend
 
 # Create virtual environment
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+source venv/bin/activate        # Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Set environment variables
-export ANTHROPIC_API_KEY=sk-ant-...
+# Create .env file
+cp ../.env.example .env
+# Edit .env and add:
+#   GROQ_API_KEY=gsk_...        ← from console.groq.com (free)
+#   GEMINI_API_KEY=AIza...      ← from aistudio.google.com (optional backup)
+#   FRONTEND_URL=http://localhost:5173
 
 # Start backend
 uvicorn main:app --reload --port 8000
-
-# API runs at http://localhost:8000
-# Docs at http://localhost:8000/docs (Swagger UI)
+# → API: http://localhost:8000
+# → Docs: http://localhost:8000/docs
 ```
+
+The frontend automatically points to `http://localhost:8000` in development.
 
 ---
 
 ## Deploy for Free
 
-### Frontend → Vercel (2 minutes)
+### Frontend → Vercel
 
 ```bash
-# Install Vercel CLI
 npm i -g vercel
-
-# Deploy
 vercel
-
-# Add environment variable in Vercel dashboard:
-# Settings → Environment Variables → VITE_ANTHROPIC_API_KEY
+# In Vercel dashboard → Settings → Environment Variables:
+#   VITE_BACKEND_URL = https://your-backend.railway.app
 ```
 
-Your app is live at `https://vaaksiddhi.vercel.app` — **free, with auto-SSL and global CDN.**
+### Backend → Railway
 
-### Backend → Railway (Stage 2)
+1. Push to GitHub
+2. [railway.app](https://railway.app) → New Project → Deploy from GitHub → select `backend/`
+3. Add environment variables: `GROQ_API_KEY`, `FRONTEND_URL`
+4. Railway auto-deploys from `main` branch
 
-1. Push code to GitHub
-2. Go to [railway.app](https://railway.app) → New Project → Deploy from GitHub
-3. Select `backend/` as root directory
-4. Add environment variable: `ANTHROPIC_API_KEY`
-5. Railway auto-detects Python + gives you a URL
-
-**Cost:** Free up to 500 hours/month. $5/month for always-on.
+**Cost:** Free hobby tier (500 hrs/month). $5/month for always-on.
 
 ---
 
 ## Scaling Guide
 
-### When to Upgrade Each Component
-
-**Web Speech API → Whisper**
-- Trigger: Users complaining about transcription accuracy
-- Action: Add OpenAI API key + uncomment Whisper code in `backend/main.py`
-- Cost: $0.006/minute of audio — at 10K users × 2min/session = ~$120/month
-
-**localStorage → Supabase**
-- Trigger: Users want cross-device sync, or you want analytics
-- Action: Create Supabase project (free) → update `src/services/storage.js`
-- Cost: Free up to 50,000 rows
-
-**Claude Browser → Groq Backend**
-- Trigger: You want to protect your API key (recommended before public launch)
-- Action: Deploy FastAPI backend → update `src/services/llm.js` to call backend
-- Cost: Free tier covers ~500 daily active users
-
-**Groq → Claude Sonnet (for accuracy)**
-- Trigger: Feedback quality complaints, or advanced users need more nuanced analysis
-- Action: Change one line in `backend/main.py`
-- Cost: ~$3/million tokens (Claude Sonnet)
-
-**Self-hosted Whisper**
-- Trigger: STT costs exceed $100/month
-- Action: Deploy Whisper on RunPod A10G GPU
-- Cost: ~$90/month, handles unlimited audio
-
-### The Break-Even Points
-
-| Monthly Users | Free? | Recommended Stack |
+| Trigger | Upgrade | Cost delta |
 |---|---|---|
-| 0–500 | ✅ Yes | Stage 1 (everything free) |
-| 500–5,000 | ✅ Yes | Stage 1 + Railway backend ($5) |
-| 5,000–50,000 | 🟡 Small cost | Stage 2 (~$40–60/mo) |
-| 50,000–500,000 | 💰 Paid | Stage 3 (~$260/mo) |
-| 500,000+ | 💰 Scale | Stage 3 + GPU cluster |
+| Users complain about transcription | Web Speech → Whisper API | +$18/mo per 10K users |
+| Want cross-device sync | localStorage → Supabase | +$25/mo (free up to 50K rows) |
+| Need better AI quality | Groq → Claude Sonnet | +~$20/mo at moderate volume |
+| STT costs >$100/mo | Whisper API → self-hosted GPU | Flat ~$90/mo, any volume |
+| 1M+ users | Multi-region AWS | Custom — talk to us |
 
 ---
 
@@ -396,15 +361,16 @@ Your app is live at `https://vaaksiddhi.vercel.app` — **free, with auto-SSL an
 
 ### `POST /api/analyze`
 
-Analyze pronunciation — the core endpoint.
+Main pronunciation analysis endpoint.
 
 **Request:**
 ```json
 {
   "expected_transliteration": "karmaṇy-evādhikāras te mā phaleṣu kadācana",
   "spoken_transcript": "karmanye vadhikaraste ma phaleshu kadachana",
+  "spoken_alternatives": ["karma vadhikar", "karmanye vadikaraste"],
   "shloka_english": "You have a right to perform your prescribed duties...",
-  "hard_sounds": ["karmaṇy", "phaleṣu", "hetur"]
+  "hard_sounds": ["karmaṇy", "phaleṣu"]
 }
 ```
 
@@ -414,168 +380,236 @@ Analyze pronunciation — the core endpoint.
   "score": 78,
   "grade": "B+",
   "overall": "Strong attempt — your rhythm is excellent, focus on vowel lengths.",
-  "praise": "Perfect pause placement between pādas. Your stress pattern was natural.",
+  "praise": "Perfect pause placement between pādas.",
   "mistakes": [
-    "karmaṇy — the 'ṇ' is retroflex (tongue curls back), not a plain 'n'",
-    "phaleṣu — 'ṣ' is harder than 'sh', like sh with tongue pulled back"
+    {
+      "word": "karmaṇy",
+      "devanagari": "कर्मण्य",
+      "issue": "The 'ṇ' is retroflex — tongue must curl back to the palate"
+    }
   ],
-  "tips": [
-    "For ā (long a): say 'ah' as in 'father', hold it twice as long as short a",
-    "For retroflex ṇ: touch the roof of your mouth further back than for 'n'",
-    "Record yourself and compare against the transliteration syllable by syllable"
-  ],
+  "tips": ["For ā: say 'ah' as in father, hold twice as long as short a"],
   "phonetic_guide": {
     "word": "karmaṇy",
+    "devanagari": "कर्मण्य",
     "breakdown": "kar-mun-yuh — 'u' is very short, 'yuh' ends softly",
     "example": "Similar to 'car' + 'mun' + quick 'yuh'"
   },
-  "sanskrit_rule": "Sanskrit distinguishes 5 nasal sounds (ṅ ñ ṇ n m) based on place of articulation — each is phonemically distinct.",
-  "encouragement": "अभ्यासेन तु कौन्तेय — Through constant practice, O Arjuna, all is achieved. (Gita 6.35)"
+  "sanskrit_rule": "Sanskrit has 5 nasal sounds (ṅ ñ ṇ n m) — each is phonemically distinct.",
+  "encouragement": "अभ्यासेन तु कौन्तेय — Through practice, all is achieved. (BG 6.35)",
+  "provider": "groq",
+  "cached": false
 }
 ```
 
-### `POST /api/transcribe`
+**Key change from v1:** `mistakes` are now objects `{ word, devanagari, issue }` instead of strings, enabling authentic Devanagari TTS playback.
 
-Convert audio to Sanskrit text (Stage 2+, requires Whisper).
+### `GET /api/daily-word`
 
-**Request:** Multipart form with audio file (WebM/MP3/WAV)
+Returns today's Sanskrit word from a rotating curated list of 15 Gita terms.
 
-**Response:**
-```json
-{
-  "transcript": "karmanye vadhikaraste",
-  "language": "sa",
-  "confidence": 0.87
-}
-```
+### `GET /health`
 
-### `GET /api/shlokas`
+Provider status, cache count, and timestamps.
 
-List shlokas with optional filters.
+### `GET /`
 
-**Query params:** `chapter=2`, `difficulty=beginner`
-
-**Response:**
-```json
-{
-  "shlokas": [...],
-  "count": 10
-}
-```
+API info, configured providers, and signup links.
 
 ---
 
 ## The AI Feedback Engine
 
-The heart of VaakSiddhi is the prompt engineering in `src/services/llm.js`.
+### Provider Cascade
 
-### System Prompt Design
+```
+Request → Backend → [Rate limit check] → [Cache lookup]
+                         │ cache miss
+                         ▼
+                    [Groq healthy?] ─yes→ call_groq()
+                         │ no / fails
+                         ▼
+                    [Gemini healthy?] ─yes→ call_gemini()
+                         │ no / fails
+                         ▼
+                    heuristic_analysis()   ← always works
+```
 
-The AI is given a persona: **"Guru Vaak"** — a warm, expert Sanskrit phonetics coach who:
-- Celebrates what the student did well (builds confidence)
-- Gives specific, technical feedback (not vague "try better")
+Provider health is tracked over a 5-minute window. If a provider fails 3 times, it's automatically skipped for the rest of the window.
+
+### Prompt Design — Guru Vaak
+
+The AI persona is **Guru Vaak** — a warm, technically precise Sanskrit phonetics expert who:
+
+- Celebrates what the student did well (confidence-building)
+- Returns the **Devanagari form** of every mispronounced word alongside IAST
 - Explains the Sanskrit phonetics *rule* behind each correction
-- Provides English-language phonetic analogies (not just IPA)
-- Ends with an encouraging Sanskrit quote
+- Accounts for Web Speech API's unreliability with Sanskrit by using all 3 transcript alternatives together
+- Returns valid JSON with `response_format: json_object` (Groq) / `responseMimeType: application/json` (Gemini)
 
-### Why Claude Specifically?
+### STT Alternatives
 
-Claude was chosen over GPT-4o or Gemini for Sanskrit because:
-1. **Multilingual training** — strong Hindi/Sanskrit corpus
-2. **Instruction following** — reliably returns valid JSON
-3. **Nuanced explanations** — can explain retroflex consonants to beginners
-4. **Cultural sensitivity** — treats religious texts respectfully
-
-### Prompt Structure
+Chrome's Web Speech API returns up to 3 different transcription guesses per segment. VaakSiddhi collects **all alternatives** across all result segments and sends them to the LLM:
 
 ```
-SYSTEM: You are Guru Vaak, expert Sanskrit phonetics coach...
-USER:   Expected transliteration: [correct text]
-        English meaning: [context]
-        Hard sounds in this verse: [ṭ, ṣ, etc.]
-        Student said: [transcribed speech]
-        
-        Return JSON with: score, grade, praise, mistakes, tips, phonetic_guide...
+Primary: "dharma kshetre kuru kshetre"
+Alt 1:   "dharm kshetra kuru kshetra"
+Alt 2:   "dharma chitra kuru kshetra"
+→ LLM uses all three together to infer actual pronunciation
 ```
+
+---
+
+## Pronunciation Audio — Upgrade Path
+
+The current TTS uses the browser's built-in `SpeechSynthesisUtterance` with `hi-IN` voice and Devanagari text. This is decent but uses a **Hindi voice model** — not a Sanskrit one. For authentic pronunciation, here are the upgrade options in order of effort:
+
+### Option 1 — Bhashini API *(Free, recommended first step)*
+
+India's government-funded API specifically built for Indian languages including Sanskrit. Has voices recorded by native Sanskrit speakers.
+
+```python
+# backend/main.py — add this route
+@app.get("/api/tts")
+async def tts(text: str, lang: str = "sa"):
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            "https://dhruva-api.bhashini.gov.in/services/inference/pipeline",
+            headers={"Authorization": BHASHINI_KEY},
+            json={"pipelineTasks": [{"taskType": "tts", "config": {"language": {"sourceLanguage": lang}}}],
+                  "inputData": {"input": [{"source": text}]}}
+        )
+    return {"audio_base64": resp.json()["pipelineResponse"][0]["audio"][0]["audioContent"]}
+```
+
+Sign up at [bhashini.gov.in](https://bhashini.gov.in) → API key is free for Indian developers.
+
+### Option 2 — Google Cloud TTS with `sa-IN` *(Best quality, ~$4/1M chars)*
+
+Google has an actual Sanskrit voice model (`sa-IN-Standard-A`). The WaveNet version sounds distinctly different from Hindi.
+
+```python
+from google.cloud import texttospeech
+client = texttospeech.TextToSpeechClient()
+synthesis_input = texttospeech.SynthesisInput(text=devanagari_text)
+voice = texttospeech.VoiceSelectionParams(language_code="sa-IN", name="sa-IN-Standard-A")
+```
+
+First 1M characters/month are free; ₹0 for most small apps.
+
+### Option 3 — Sarvam AI `saarika` *(Indian startup, free tier)*
+
+Purpose-built for Indian languages. Has dedicated Sanskrit support with nuanced prosody. Sign up at [sarvam.ai](https://sarvam.ai).
+
+### Option 4 — Pre-recorded Pandit Audio *(Best quality, no API)*
+
+Record a Sanskrit teacher or use freely licensed recordings from [spokensanskrit.org](https://spokensanskrit.org) or the AI4Bharat corpus. Map recordings to shloka IDs in `shlokas.json`. Zero runtime cost, perfect pronunciation.
+
+### Current workaround quality
+
+| Text given to TTS | Voice | Sounds like |
+|---|---|---|
+| IAST Latin: `dhṛtarāṣṭra` | hi-IN | Garbled English ❌ |
+| Devanagari: `धृतराष्ट्र` | hi-IN | Accented Hindi — recognisable ✅ |
+| Devanagari: `धृतराष्ट्र` | sa-IN (Google) | Authentic Sanskrit ✅✅ |
+| Pre-recorded audio | Pandit | Perfect ✅✅✅ |
 
 ---
 
 ## Shloka Database
 
-`src/data/shlokas.json` contains 10 representative shlokas (MVP). The full database will contain all 700 verses across 18 chapters.
-
-### Schema
+`src/data/shlokas.json` is lazily imported to avoid blocking first render. Schema:
 
 ```json
 {
-  "id": 4,
+  "id": "BG2.47",
   "chapter": 2,
   "verse": 47,
-  "title": "The Yoga of Action",
+  "chapter_name": "Sankhya Yoga",
+  "title": "Chapter 2, Verse 47",
   "sanskrit": "कर्मण्येवाधिकारस्ते...",
   "transliteration": "karmaṇy-evādhikāras te...",
   "hindi": "तुम्हारा अधिकार केवल कर्म करने में है...",
   "english": "You have a right to perform your duties...",
   "difficulty": "beginner",
-  "audio_hint": "kar-MAN-yeh-VAA-dhi-KAA-ras-teh...",
-  "keywords": ["karma", "duty", "action", "detachment"],
-  "hard_sounds": ["karmaṇy", "phaleṣu", "hetur", "saṅgo"]
+  "keywords": ["karma", "adhikara", "phala"],
+  "hard_sounds": ["karmaṇy", "phaleṣu", "hetur"]
 }
 ```
 
-### Data Sources
+---
 
-Translations sourced and verified from:
-- Swami Prabhupada — Bhaktivedanta Book Trust
-- Swami Sivananda — Divine Life Society
-- Swami Chinmayananda — Chinmaya Mission
-- Winthrop Sargeant — SUNY Press (scholarly Sanskrit)
+## Bugs Fixed
+
+A complete list of every bug discovered and resolved during development:
+
+| # | Bug | Root cause | Fix |
+|---|---|---|---|
+| 1 | **Pydantic build fails on Python 3.13** | `pydantic-core 2.14.1` called `ForwardRef._evaluate()` with the wrong number of arguments — Python 3.13 changed the API | Updated `requirements.txt` from pinned `==` versions to `>=` ranges (`pydantic>=2.9.0`, `fastapi>=0.115.0`) |
+| 2 | **App.jsx was 932 lines** | Single monolithic file with all screens, logic, and styles | Split into 7 focused files: HomeScreen, LibraryScreen, PracticeScreen, ResultsScreen, ErrorBoundary, ui/index, tokens.js |
+| 3 | **API keys exposed in browser** | Claude was called directly from the frontend with `VITE_ANTHROPIC_API_KEY` visible to anyone opening DevTools | All AI calls now route through the FastAPI backend; keys are server-only env vars |
+| 4 | **CORS wildcard in production** | `allow_origins=["*"]` accepted requests from any origin | CORS now reads `FRONTEND_URL` env var; falls back to localhost only |
+| 5 | **16MB JSON blocking first render** | `shlokas.json` was statically imported at module load | Replaced with dynamic `import("../data/shlokas.json")` inside `useEffect` — renders instantly with spinner |
+| 6 | **Dual recognizer abort bug** | Adding a second `en-IN` SpeechRecognition instance alongside `hi-IN` caused Chrome to abort both immediately with `error: aborted` | Reverted to single `hi-IN` recognizer; collect all 3 built-in alternatives via `event.results[i][j]` loop |
+| 7 | **"No speech detected" false positive** | `recognition.onend` fired immediately after `start()` (browser quirk on some inputs) — triggered `onResults` with empty transcript before user spoke | Added `gotAnyAudio` boolean guard: `onEnd` only calls `onResults` if at least one final result segment was received |
+| 8 | **App freezes when offline** | Web Speech API requires internet (streams to Google). `error: network` fired but `onEnd` never followed → PracticeScreen stuck in recording state | Caught `error: network` in `onerror`, set `shouldRestart = false`, auto-switched to manual text input with helpful message |
+| 9 | **No crash recovery** | Any unhandled React render error crashed the white-screen with no user option to recover | Added `ErrorBoundary.jsx` class component wrapping the entire app tree; shows "Reload App" button on crash |
+| 10 | **Recording playback URL lost** | `playbackUrl` stored in React state; `stopAndAnalyze` navigated to ResultsScreen before state updated → Results never received the URL | Used `playbackUrlRef` (useRef, synchronous) to capture the blob URL immediately; forwarded through `onResults` payload |
+| 11 | **WebM blob duration = Infinity** | Chrome's `MediaRecorder` doesn't write a duration header into WebM files → `audio.duration === Infinity` → progress bar broken | On `loadedmetadata`, seek to `currentTime = 1e9` to force the browser to scan to the real end and set correct duration |
+| 12 | **Replay after stop didn't work** | After `onEnded`, `audio.currentTime === audio.duration`. Calling `play()` again fired `ended` instantly. `currentTime` was never reset | `toggle()` now always sets `currentTime = 0` before `play()`; awaits the Promise and catches errors |
+| 13 | **TTS sounded like English** | `SpeechSynthesisUtterance` was fed IAST Latin text (`dhṛtarāṣṭra`) — browser reads it as garbled English | Changed all TTS calls to use Devanagari script (`shloka.sanskrit`); LLM prompt updated to return `devanagari` field for each mistake word |
+| 14 | **`makeRequestId` declared, never used** | IDE warning; request IDs existed client-side but were not sent to the backend | Wired into fetch headers as `X-Request-ID`; backend updated to extract and log with `rid=` in every structured log line |
+| 15 | **No scroll/filter memory in Library** | Every time you navigated back from Practice, the library reset to top with no filters | Persisted scroll position and active filter to `sessionStorage`; restored on mount |
+| 16 | **No spaced repetition** | Users had to manually decide which shloka to review | Implemented SM-2 simplified algorithm in `storage.js`: score≥80 doubles interval (max 30 days), score≥60 keeps 3-day minimum, score<60 resets to 1 day |
 
 ---
 
 ## Roadmap
 
-### v1.0 — Current (MVP)
-- [x] 10 core shlokas from key chapters
-- [x] Voice recording with waveform visualization
-- [x] Claude AI pronunciation analysis
-- [x] Score + grade system
-- [x] Hindi + English + Transliteration tabs
-- [x] Pronunciation guide per shloka
-- [x] Progress tracking (localStorage)
-- [x] Daily Sanskrit word
-- [x] Difficulty filtering + search
-- [x] FastAPI backend (Stage 2 ready)
+### v1.0 — Current
+- [x] React 18 + Vite frontend, split into focused components
+- [x] FastAPI backend with Groq → Gemini → Heuristic cascade
+- [x] Voice recording with waveform visualization + blob URL playback
+- [x] Hear your own recording back with progress bar
+- [x] Devanagari TTS for correct pronunciation + per-mistake word TTS
+- [x] Score + grade system (0–100, A+–F)
+- [x] Word-level mistakes with Devanagari badge
+- [x] Phonetic breakdown for hardest word
+- [x] 3 improvement tips per session
+- [x] Progress tracking with SM-2 spaced repetition
+- [x] PWA: installable, offline-capable, service worker
+- [x] Daily Sanskrit word (15 rotating Gita terms)
+- [x] Scroll memory + filter persistence in Library
+- [x] ARIA labels, keyboard accessible
+- [x] ErrorBoundary for crash recovery
+- [x] Request ID tracing end-to-end
+- [x] Structured Python logging with `rid=` per request
 
-### v1.1 — Full Content
+### v1.1 — Content
 - [ ] All 700 shlokas across 18 chapters
 - [ ] Chapter summaries and context
-- [ ] Mark favourite shlokas
+- [ ] Favourite shlokas
 - [ ] Share results card (Instagram-friendly)
 
-### v1.2 — Audio Reference
-- [ ] Reference audio via Bhashini API (correct pronunciation playback)
-- [ ] Side-by-side waveform comparison
+### v1.2 — Authentic Audio
+- [ ] Bhashini API TTS backend route (`GET /api/tts`)
+- [ ] Google Cloud TTS `sa-IN` voice integration
+- [ ] Side-by-side waveform: your voice vs correct pronunciation
 - [ ] 0.5x slowdown mode for difficult passages
-- [ ] Highlight mispronounced word in text
 
-### v2.0 — Learning System
-- [ ] Supabase integration (cross-device sync)
-- [ ] User accounts (Supabase Auth — Google/Apple login)
-- [ ] Spaced repetition — revisit weak shlokas automatically
-- [ ] Personalized weak-spot detection ("You always struggle with ṣ sounds")
-- [ ] 30-day learning curriculum
-- [ ] Daily practice reminders (PWA push notifications)
+### v2.0 — Platform
+- [ ] Supabase cross-device sync
+- [ ] Google/Apple login (Supabase Auth)
+- [ ] Whisper API for better STT accuracy
+- [ ] Personalized weak-spot detection
+- [ ] 30-day Sanskrit learning curriculum
+- [ ] Push notification reminders (PWA)
 
-### v2.1 — Community
-- [ ] Teacher mode — assign shlokas to students, view their scores
-- [ ] Class leaderboard
-- [ ] Audio recording download (save your best takes)
-
-### v3.0 — Platform
-- [ ] React Native iOS + Android apps
-- [ ] Other texts: Yoga Sutras, Upanishads, Hanuman Chalisa
+### v3.0 — Expansion
+- [ ] React Native iOS/Android apps
+- [ ] Yoga Sutras, Upanishads, Hanuman Chalisa
 - [ ] Sanskrit keyboard input
+- [ ] Teacher mode: assign shlokas, view student scores
 - [ ] Premium tier (₹99/month)
 
 ---
@@ -584,27 +618,18 @@ Translations sourced and verified from:
 
 ### Sanskrit ASR — State of the Art (2025)
 
-The biggest technical risk is speech recognition quality for Sanskrit. Research shows:
+| System | WER | Cost | Notes |
+|---|---|---|---|
+| Web Speech API hi-IN | ~35% | Free | Good enough for MVP with alternatives |
+| OpenAI Whisper (base) | ~25% | $0.006/min | Better, but still not Sanskrit-specific |
+| AI4Bharat Whisper Sanskrit | ~15.4% | Self-host | Best accuracy, needs GPU |
+| Bhashini ASR | ~18% | Free | Indian govt, Sanskrit trained |
 
-- **Whisper fine-tuned for Sanskrit** achieves ~15.4% Word Error Rate (WER) — adequate for comparison purposes
-- **AI4Bharat** has open-sourced Sanskrit ASR models trained on Vedic audio
-- **Bhashini** (India govt) provides production-grade Sanskrit/Hindi TTS and ASR
-- **Web Speech API** (hi-IN mode) — surprisingly usable for Sanskrit due to shared Devanagari phonemes with Hindi
-
-WER of 15% means the AI correctly catches most errors that matter (wrong consonant type, wrong vowel length) — the exact errors that most affect pronunciation quality.
-
-### Why GenAI Is the Right Tool
-
-Traditional pronunciation apps use phoneme matching algorithms (DTW, Levenshtein on phoneme sequences). GenAI adds:
-
-1. **Natural language explanation** — telling *why* something is wrong, not just that it is
-2. **Cultural and linguistic context** — "this word is a name for Vishnu, so the ṣ must be crisp"
-3. **Encouragement calibrated to effort** — different feedback for complete beginner vs advanced learner
-4. **Sanskrit rule extraction** — teaching the system, not just correcting the instance
+WER of 15–35% means AI correctly catches most errors that matter — wrong consonant type, wrong vowel length — the exact errors that most affect recitation quality.
 
 ### Prior Art Analysis
 
-| Product | Has recording? | Has AI feedback? | Sanskrit specific? | Gita specific? |
+| Product | Recording? | AI feedback? | Sanskrit specific? | Gita specific? |
 |---|---|---|---|---|
 | Vyoma SanskritFromHome | ❌ | ❌ | ✅ | ✅ |
 | SGS Gita Tutor | ❌ | ❌ | ✅ | ✅ |
@@ -612,52 +637,52 @@ Traditional pronunciation apps use phoneme matching algorithms (DTW, Levenshtein
 | Duolingo (Sanskrit) | ❌ | ❌ | ✅ | ❌ |
 | **VaakSiddhi** | ✅ | ✅ | ✅ | ✅ |
 
-**VaakSiddhi is the only product that closes all four requirements.**
-
 ---
 
 ## Contributing
 
-Contributions welcome! Priority areas:
+Priority areas:
 
-1. **Shloka data** — Help verify and add all 700 verses with accurate translations
-2. **Sanskrit phonetics accuracy** — Review AI feedback for linguistic correctness  
-3. **Hindi/regional translations** — Add Tamil, Telugu, Marathi, Kannada meanings
-4. **Accessibility** — Screen reader support, larger text options
-5. **PWA** — Offline mode implementation
+1. **Shloka data** — Help verify and add all 700 verses
+2. **Sanskrit phonetics accuracy** — Review AI feedback for linguistic correctness
+3. **Bhashini/Google TTS integration** — Add authentic Sanskrit audio
+4. **Hindi/regional translations** — Tamil, Telugu, Marathi, Kannada
+5. **Whisper integration** — Better STT than Web Speech API
 
 ```bash
-git checkout -b feature/your-feature-name
-git commit -m "feat: description of your change"
-git push origin feature/your-feature-name
+git checkout -b feature/your-feature
+git commit -m "feat: your description"
+git push origin feature/your-feature
 # → Open Pull Request
 ```
 
-### Code Style
-- React: functional components + hooks only
-- No class components
-- Services always return typed data (use JSDoc or TypeScript in future)
-- All AI calls must have fallback responses
-- Never commit API keys (use .env.local)
+**Code conventions:**
+- Functional React components + hooks only
+- All AI calls must have a fallback
+- Never commit `.env` or API keys
+- Validate at system boundaries (user input, API responses); trust internal code
 
 ---
 
 ## FAQ
 
-**Q: Why is it not called GitaGuru or something simpler?**  
-A: VaakSiddhi is intentionally multilingual — it works equally well for Hindi, Sanskrit, and English speakers, reflects the spiritual depth of the project, and has no trademark conflicts. It's also unique enough to be Google-able.
+**Q: Why is it not called GitaGuru?**
+A: VaakSiddhi works equally well across Hindi/Sanskrit/English speakers, reflects the spiritual depth of the project, and has no trademark conflicts.
 
-**Q: Does it work on iPhone?**  
-A: Safari on iOS does not support Web Speech API. Use Chrome on Android, or Chrome/Edge on desktop. iOS support will come in v3.0 via the native app.
+**Q: Does it work on iPhone?**
+A: Safari on iOS doesn't support Web Speech API. Use Chrome on Android, or Chrome/Edge on desktop. Native iOS app is on the v3.0 roadmap.
 
-**Q: Is my voice data stored anywhere?**  
-A: In Stage 1, audio is processed entirely in the browser by the Web Speech API — nothing leaves your device except the text transcript sent to the AI. In Stage 2+, audio is sent to Whisper for transcription and immediately discarded.
+**Q: Is my voice stored anywhere?**
+A: In Stage 1, audio is processed entirely in the browser — only the text transcript is sent to the AI. The blob URL for playback lives in memory only, cleared when you leave Results. Nothing is uploaded.
 
-**Q: Can I use this for other Sanskrit texts, not just Gita?**  
-A: The AI feedback system works for any Sanskrit text. Just swap the shloka database. Upanishads, Yoga Sutras, and Hanuman Chalisa are on the v3.0 roadmap.
+**Q: The TTS doesn't sound very Sanskrit-like.**
+A: Correct — the browser's `hi-IN` voice is a Hindi model reading Devanagari. It's better than IAST (which sounds like English), but not perfect. The [Pronunciation Audio Upgrade Path](#pronunciation-audio--upgrade-path) section above explains how to add Bhashini (free) or Google `sa-IN` for authentic Sanskrit voice.
 
-**Q: How accurate is the AI feedback?**  
-A: The AI is highly accurate for common errors (vowel length, retroflex consonants). For very subtle sandhi rules or advanced recitation styles (Vedic pitch accents), it may miss nuances. Always cross-reference with a human guru for serious study.
+**Q: How accurate is the AI feedback?**
+A: Highly accurate for common errors (vowel length, retroflex consonants, visarga). For very subtle sandhi rules or Vedic pitch accents, always cross-reference with a human guru.
+
+**Q: Can I use this for other Sanskrit texts?**
+A: The AI system works for any Sanskrit text. Swap the shloka database. Yoga Sutras, Upanishads, and Hanuman Chalisa are on the v3.0 roadmap.
 
 ---
 
@@ -670,13 +695,13 @@ MIT — free to use, fork, modify, and distribute.
 ## Acknowledgements
 
 - **Bhagavad Gita translations**: Swami Prabhupada (ISKCON), Swami Sivananda (DLS), Winthrop Sargeant
-- **Sanskrit ASR**: AI4Bharat team, IIT Madras Speech Lab
-- **Bhashini project**: MeitY India, for making Indian language AI publicly accessible
-- **Design inspiration**: The rich visual tradition of Indian manuscript illumination
+- **Sanskrit ASR research**: AI4Bharat team, IIT Madras Speech Lab
+- **Bhashini project**: MeitY India — making Indian language AI publicly accessible
+- **Design inspiration**: Indian manuscript illumination tradition
 
 ---
 
-*ॐ तत् सत्*  
+*ॐ तत् सत्*
 *"That is the Truth"*
 
 *योगः कर्मसु कौशलम् — Yoga is skill in action. (Bhagavad Gita 2.50)*

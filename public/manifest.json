@@ -1,0 +1,20 @@
+{
+  "name": "VaakSiddhi — Sanskrit Pronunciation Coach",
+  "short_name": "VaakSiddhi",
+  "description": "AI-powered Bhagavad Gita Sanskrit pronunciation coach. Record, recite, and get word-level feedback.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0D0818",
+  "theme_color": "#0D0818",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/om.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "lifestyle"],
+  "lang": "en"
+}
