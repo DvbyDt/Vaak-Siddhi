@@ -305,7 +305,7 @@ async def call_gemini_audio(audio_b64: str, mime_type: str, translit: str, engli
 
     prompt = _build_audio_prompt(translit, english, hard_sounds, spoken_hint)
 
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with httpx.AsyncClient(timeout=90) as client:
         resp = await client.post(
             f"{GEMINI_URL}?key={api_key}",
             headers={"Content-Type": "application/json"},
@@ -317,9 +317,11 @@ async def call_gemini_audio(audio_b64: str, mime_type: str, translit: str, engli
                     ]
                 }],
                 "generationConfig": {
-                    "temperature":      0.3,
-                    "maxOutputTokens":  1024,
-                    "responseMimeType": "application/json",
+                    # Do NOT set responseMimeType here — it conflicts with inlineData audio
+                    # on gemini-2.5-flash and causes truncated/malformed JSON output.
+                    # Instead we extract the JSON block from the text response below.
+                    "temperature":     0.3,
+                    "maxOutputTokens": 4096,   # thinking model needs headroom
                 },
             }
         )
@@ -335,7 +337,16 @@ async def call_gemini_audio(audio_b64: str, mime_type: str, translit: str, engli
     if not text:
         raise ValueError("Empty Gemini audio response")
 
-    parsed = json.loads(text.replace("```json", "").replace("```", "").strip())
+    # Strip markdown fences and extract the JSON object / array
+    clean = text.replace("```json", "").replace("```", "").strip()
+    # Find the outermost { ... } block in case the model added any prose before/after
+    start = clean.find("{")
+    end   = clean.rfind("}") + 1
+    if start == -1 or end == 0:
+        raise ValueError(f"No JSON object found in Gemini audio response: {clean[:120]}")
+    clean = clean[start:end]
+
+    parsed = json.loads(clean)
     required = ["score", "grade", "overall", "praise", "mistakes", "tips",
                 "phonetic_guide", "sanskrit_rule", "encouragement"]
     for f in required:
