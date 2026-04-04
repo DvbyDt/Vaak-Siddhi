@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { T } from "../styles/tokens.js";
 import { Chip, Card, WaveformBars, DifficultyBadge, Spinner } from "./ui/index.jsx";
 import { analyzePronunciation, analyzePronunciationWithAudio } from "../services/llm.js";
+import { transcribe } from "../services/tts.js";
 import {
   createSpeechRecognizer,
   createAudioRecorder,
@@ -135,10 +136,11 @@ const PracticeScreen = ({ shloka, onBack, onResults }) => {
         if (final) setTranscript(final);
         setInterimText(interim);
       },
-      onEnd: async ({ transcript, alternatives }) => {
-        if (transcript) setTranscript(transcript);
+      onEnd: async ({ transcript: webSpeechText, alternatives }) => {
+        if (webSpeechText) setTranscript(webSpeechText);
         setIsRecording(false);
         clearInterval(timerRef.current);
+
         // Stop audio recorder — store blob + url in refs before calling stopAndAnalyze
         const rec = await recorderRef.current?.stop();
         if (rec) {
@@ -146,7 +148,25 @@ const PracticeScreen = ({ shloka, onBack, onResults }) => {
           playbackUrlRef.current = rec.url;
           setPlaybackUrl(rec.url);
         }
-        stopAndAnalyze({ transcript, alternatives });
+
+        // Sarvam saarika:v2 — purpose-built for Indian languages, far more accurate
+        // than Chrome's hi-IN Web Speech API for Sanskrit phonemes.
+        let finalText  = webSpeechText;
+        let finalAlts  = alternatives;
+        if (rec?.blob) {
+          try {
+            const sarvamText = await transcribe(rec.blob);
+            if (sarvamText) {
+              finalText = sarvamText;
+              // Keep Web Speech result as a secondary hint for the LLM
+              if (webSpeechText) finalAlts = [webSpeechText, ...alternatives];
+            }
+          } catch {
+            // Sarvam unavailable (no key, 503) — proceed with Web Speech transcript
+          }
+        }
+
+        stopAndAnalyze({ transcript: finalText, alternatives: finalAlts });
       },
       onError: (msg) => {
         setMicError(msg);

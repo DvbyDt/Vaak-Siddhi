@@ -1,21 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { T } from "../styles/tokens.js";
 import { Card, Chip, ScoreRing } from "./ui/index.jsx";
-
-// ─── TTS helper ───────────────────────────────────────────────────────────────
-// Speaks `text` at a slow rate using the browser's built-in speech synthesis.
-// lang "hi-IN" best covers Sanskrit phonemes for free without any API.
-let activeTTSWord = null; // track which word is currently speaking
-
-function speakText(text, lang = "hi-IN", rate = 0.72) {
-  if (!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const u  = new SpeechSynthesisUtterance(text.trim());
-  u.lang   = lang;
-  u.rate   = rate;
-  u.pitch  = 1;
-  window.speechSynthesis.speak(u);
-}
+import { speak, stopTTS } from "../services/tts.js";
 
 // Normalise a mistake entry — supports both new object format and legacy string format.
 // New:    { word, devanagari, issue }
@@ -34,23 +20,17 @@ function parseMistake(m) {
 }
 
 // ─── Speak button ─────────────────────────────────────────────────────────────
-const SpeakBtn = ({ text, lang = "hi-IN", rate, label = "Hear pronunciation", size = "sm" }) => {
+// Uses Sarvam TTS (bulbul:v2) for authentic Sanskrit audio,
+// with automatic fallback to browser SpeechSynthesis if unavailable.
+const SpeakBtn = ({ text, lang = "hi-IN", rate = 0.72, pace = 0.85, label = "Hear pronunciation", size = "sm" }) => {
   const [speaking, setSpeaking] = useState(false);
 
-  const handleClick = (e) => {
+  const handleClick = async (e) => {
     e.stopPropagation();
-    if (!window.speechSynthesis) return;
-    if (speaking) { window.speechSynthesis.cancel(); setSpeaking(false); return; }
-
-    window.speechSynthesis.cancel();
-    const u  = new SpeechSynthesisUtterance(text.trim());
-    u.lang   = lang;
-    u.rate   = rate ?? 0.72;
-    u.pitch  = 1;
-    u.onstart = () => setSpeaking(true);
-    u.onend   = () => setSpeaking(false);
-    u.onerror = () => setSpeaking(false);
-    window.speechSynthesis.speak(u);
+    if (speaking) { stopTTS(); setSpeaking(false); return; }
+    setSpeaking(true);
+    await speak({ text, languageCode: lang, pace, rate });
+    setSpeaking(false);
   };
 
   const isSmall = size === "sm";

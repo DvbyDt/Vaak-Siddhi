@@ -31,6 +31,23 @@ from typing import Optional
 import os, json, httpx, time, hashlib, asyncio, logging, base64
 from collections import defaultdict
 from dotenv import load_dotenv
+from json_repair import repair_json
+
+
+def _parse_llm_json(raw: str) -> dict:
+    """
+    Parse JSON from LLM output robustly.
+    LLMs frequently produce: literal newlines in strings, trailing commas,
+    unescaped quotes, or prose before/after the JSON block.
+    json_repair handles all of these; we fall back to stdlib only if needed.
+    """
+    # Strip markdown fences and extract the outermost { ... } block
+    clean = raw.replace("```json", "").replace("```", "").strip()
+    start = clean.find("{")
+    end   = clean.rfind("}") + 1
+    if start != -1 and end > start:
+        clean = clean[start:end]
+    return json.loads(repair_json(clean))
 
 logging.basicConfig(
     level=logging.INFO,
@@ -40,6 +57,8 @@ logging.basicConfig(
 log = logging.getLogger("vaaksiddhi")
 
 load_dotenv()
+
+SARVAM_BASE = "https://api.sarvam.ai"
 
 app = FastAPI(title="VaakSiddhi API", version="3.0.0")
 
@@ -346,7 +365,7 @@ async def call_gemini_audio(audio_b64: str, mime_type: str, translit: str, engli
         raise ValueError(f"No JSON object found in Gemini audio response: {clean[:120]}")
     clean = clean[start:end]
 
-    parsed = json.loads(clean)
+    parsed = _parse_llm_json(clean)
     required = ["score", "grade", "overall", "praise", "mistakes", "tips",
                 "phonetic_guide", "sanskrit_rule", "encouragement"]
     for f in required:
@@ -403,6 +422,59 @@ def heuristic_analysis(translit: str, spoken: str) -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────
+# SARVAM AI  — Indian-language TTS + STT
+# TTS: bulbul:v2 — real trained Sanskrit/Hindi voice (sounds authentic)
+# STT: saarika:v2 — Indian-language ASR, far better than Chrome hi-IN for Sanskrit
+# Free tier: 50,000 chars/month TTS · 500 min/month STT
+# Get key: https://console.sarvam.ai  (no credit card)
+# ─────────────────────────────────────────────────────────────────
+async def sarvam_tts(text: str, language_code: str = "hi-IN",
+                     pace: float = 0.85, speaker: str = "meera") -> str:
+    """Returns base64-encoded WAV audio string from Sarvam TTS."""
+    api_key = os.environ.get("SARVAM_API_KEY", "")
+    if not api_key:
+        raise ValueError("SARVAM_API_KEY not set")
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            f"{SARVAM_BASE}/text-to-speech",
+            headers={"api-subscription-key": api_key, "Content-Type": "application/json"},
+            json={
+                "inputs": [text[:500]],          # 500-char limit per input
+                "target_language_code": language_code,
+                "speaker":   speaker,
+                "model":     "bulbul:v2",
+                "pitch":     0,
+                "pace":      pace,
+                "loudness":  1.5,
+                "speech_sample_rate": 22050,
+                "enable_preprocessing": True,
+            }
+        )
+    if resp.status_code != 200:
+        raise ValueError(f"Sarvam TTS {resp.status_code}: {resp.text[:200]}")
+    return resp.json()["audios"][0]  # base64 WAV
+
+
+async def sarvam_stt(audio_bytes: bytes, content_type: str = "audio/webm") -> str:
+    """Returns Sanskrit/Hindi transcript from Sarvam saarika:v2."""
+    api_key = os.environ.get("SARVAM_API_KEY", "")
+    if not api_key:
+        raise ValueError("SARVAM_API_KEY not set")
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            f"{SARVAM_BASE}/speech-to-text",
+            headers={"api-subscription-key": api_key},
+            files={"file": ("recording.webm", audio_bytes, content_type)},
+            data={"model": "saarika:v2", "language_code": "hi-IN", "with_timestamps": "false"},
+        )
+    if resp.status_code != 200:
+        raise ValueError(f"Sarvam STT {resp.status_code}: {resp.text[:200]}")
+    return resp.json().get("transcript", "")
+
+
+# ─────────────────────────────────────────────────────────────────
 # MULTI-PROVIDER CASCADE
 # Tries providers in order; falls through on any error or 429.
 # ─────────────────────────────────────────────────────────────────
@@ -424,7 +496,7 @@ async def analyze_with_cascade(translit: str, spoken: str, alternatives: list[st
 
         try:
             raw  = await caller(prompt)
-            data = json.loads(raw.replace("```json", "").replace("```", "").strip())
+            data = _parse_llm_json(raw)
 
             # Validate required fields
             required = ["score", "grade", "overall", "praise", "mistakes", "tips",
@@ -484,23 +556,32 @@ class AnalyzeRequest(BaseModel):
         return [s[:500] for s in v[:5]]
 
 
+class TTSRequest(BaseModel):
+    text:          str   = Field(..., min_length=1, max_length=500)
+    language_code: str   = Field(default="hi-IN", max_length=10)
+    pace:          float = Field(default=0.85, ge=0.5, le=2.0)
+    speaker:       str   = Field(default="meera", max_length=20)
+
+
 # ─────────────────────────────────────────────────────────────────
 # ROUTES
 # ─────────────────────────────────────────────────────────────────
 
 @app.get("/")
 def root():
-    groq_key   = bool(os.environ.get("GROQ_API_KEY"))
-    gemini_key = bool(os.environ.get("GEMINI_API_KEY"))
-    primary    = "groq" if groq_key else ("gemini" if gemini_key else "heuristic")
+    groq_key    = bool(os.environ.get("GROQ_API_KEY"))
+    gemini_key  = bool(os.environ.get("GEMINI_API_KEY"))
+    sarvam_key  = bool(os.environ.get("SARVAM_API_KEY"))
+    primary     = "groq" if groq_key else ("gemini" if gemini_key else "heuristic")
     return {
         "app":            "VaakSiddhi API",
-        "version":        "3.0.0",
+        "version":        "3.1.0",
         "status":         "running",
         "primary_provider": primary,
         "providers": {
             "groq":     {"configured": groq_key,   "free_limit": "14,400 req/day",  "signup": "console.groq.com"},
             "gemini":   {"configured": gemini_key,  "free_limit": "15 req/min",      "signup": "aistudio.google.com"},
+            "sarvam":   {"configured": sarvam_key,  "free_limit": "50k chars TTS / 500 min STT", "signup": "console.sarvam.ai"},
             "heuristic":{"configured": True,        "free_limit": "unlimited",       "note":   "No API key needed"},
         },
         "docs": "/docs"
@@ -513,9 +594,11 @@ def health():
         "status":    "ok",
         "timestamp": time.time(),
         "providers": {
-            "groq":         {"configured": bool(os.environ.get("GROQ_API_KEY")),   "healthy": _is_healthy("groq")},
-            "gemini":       {"configured": bool(os.environ.get("GEMINI_API_KEY")), "healthy": _is_healthy("gemini")},
-            "gemini-audio": {"configured": bool(os.environ.get("GEMINI_API_KEY")), "note": "POST /api/analyze-audio"},
+            "groq":         {"configured": bool(os.environ.get("GROQ_API_KEY")),    "healthy": _is_healthy("groq")},
+            "gemini":       {"configured": bool(os.environ.get("GEMINI_API_KEY")),  "healthy": _is_healthy("gemini")},
+            "gemini-audio": {"configured": bool(os.environ.get("GEMINI_API_KEY")),  "note": "POST /api/analyze-audio"},
+            "sarvam-tts":   {"configured": bool(os.environ.get("SARVAM_API_KEY")),  "note": "POST /api/tts"},
+            "sarvam-stt":   {"configured": bool(os.environ.get("SARVAM_API_KEY")),  "note": "POST /api/transcribe"},
         },
         "cache_entries": len(_cache),
     }
@@ -625,6 +708,50 @@ async def analyze_audio_pronunciation(
     result["provider"] = provider
     result["cached"]   = False
     return result
+
+
+@app.post("/api/tts")
+async def text_to_speech(req: TTSRequest, request: Request):
+    """
+    Sarvam TTS — converts Sanskrit/Hindi text to authentic audio.
+    Returns base64 WAV. Frontend caches by (text, lang, pace) so repeated
+    clicks on the same word don't re-fetch.
+    """
+    rid = request.headers.get("X-Request-ID", "-")
+    try:
+        audio_b64 = await sarvam_tts(req.text, req.language_code, req.pace, req.speaker)
+        log.info("tts lang=%s len=%d rid=%s", req.language_code, len(req.text), rid)
+        return {"audio_b64": audio_b64, "mime_type": "audio/wav"}
+    except ValueError as e:
+        if "not set" in str(e):
+            raise HTTPException(status_code=503,
+                detail="TTS not configured — add SARVAM_API_KEY to backend/.env")
+        log.warning("tts error=%s rid=%s", e, rid)
+        raise HTTPException(status_code=502, detail=str(e))
+
+
+@app.post("/api/transcribe")
+async def transcribe_audio(request: Request, audio: UploadFile = File(...)):
+    """
+    Sarvam STT (saarika:v2) — transcribes student's WebM recording.
+    Returns a clean Hindi/Sanskrit transcript, far more accurate than
+    Chrome's built-in hi-IN Web Speech API for Sanskrit phonemes.
+    """
+    rid = request.headers.get("X-Request-ID", "-")
+    audio_bytes = await audio.read()
+    if len(audio_bytes) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Audio too large (max 10 MB)")
+    try:
+        transcript = await sarvam_stt(audio_bytes, audio.content_type or "audio/webm")
+        log.info("transcribe size_kb=%d transcript_len=%d rid=%s",
+                 len(audio_bytes) // 1024, len(transcript), rid)
+        return {"transcript": transcript, "provider": "sarvam"}
+    except ValueError as e:
+        if "not set" in str(e):
+            raise HTTPException(status_code=503,
+                detail="Transcription not configured — add SARVAM_API_KEY to backend/.env")
+        log.warning("transcribe error=%s rid=%s", e, rid)
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 @app.get("/api/daily-word")
