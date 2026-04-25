@@ -1,4 +1,4 @@
-# 🕉 VaakSiddhi — वाक्सिद्धि
+# 🕉 VaakSiddhi - वाक्सिद्धि
 ### *Mastery of Voice*
 
 > **AI-powered Bhagavad Gita Sanskrit pronunciation coach.**
