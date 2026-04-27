@@ -8,6 +8,7 @@
 
 ## 🌟 The Name
 
+
 **VaakSiddhi** is a fusion of three linguistic traditions:
 
 | Part | Language | Meaning |
