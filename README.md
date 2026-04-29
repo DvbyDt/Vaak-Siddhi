@@ -3,7 +3,6 @@
 
 > **AI-powered Bhagavad Gita Sanskrit pronunciation coach.**
 > Record your recitation → get word-level AI feedback → hear the correct pronunciation → perfect your Sanskrit.
-
 ---
 
 ## 🌟 The Name
