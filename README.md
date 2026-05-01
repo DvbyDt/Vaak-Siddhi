@@ -17,7 +17,6 @@
 | **VaakSiddhi** | Trilingual | *"Mastery of Voice"* |
 
 It echoes naturally across Hindi, Sanskrit, and English speakers. In Hindu philosophy, **Vaak-Siddhi** is literally the spiritual power of perfect speech — exactly what this app helps you achieve.
-
 ---
 
 ## 📋 Table of Contents
